@@ -27,7 +27,7 @@ subroutine deallocate_phq
   USE nlcc_ph,      ONLY : drc
   USE units_ph,     ONLY : this_dvkb3_is_on_file, this_pcxpsi_is_on_file
   USE dynmat,       ONLY : dyn00, dyn_rec, dyn, w2, dyn_hub_bare
-  USE el_phon,      ONLY : el_ph_mat, el_ph_mat_nc_mag
+  USE el_phon,      ONLY : el_ph_mat, el_ph_mat_nc_mag, el_ph_overlap
   USE freq_ph,      ONLY : polar
   USE lrus,         ONLY : int3, int3_nc, int3_paw, becp1, dpqq, dpqq_so
   USE lr_symm_base, ONLY : rtau
@@ -142,6 +142,7 @@ subroutine deallocate_phq
   call deallocate_bec_type ( becp )
 
   if(allocated(el_ph_mat)) deallocate (el_ph_mat)
+  if(allocated(el_ph_overlap)) deallocate (el_ph_overlap)
   if(allocated(el_ph_mat_nc_mag)) deallocate (el_ph_mat_nc_mag)
   if(allocated(m_loc))     deallocate(m_loc)
 

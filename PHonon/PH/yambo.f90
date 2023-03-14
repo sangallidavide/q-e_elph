@@ -74,7 +74,7 @@ SUBROUTINE elph_yambo_eval_and_IO( )
   USE kinds,       ONLY : DP
   USE ions_base,   ONLY : nat
   USE wvfct,       ONLY : nbnd, et
-  USE el_phon,     ONLY : el_ph_mat
+  USE el_phon,     ONLY : el_ph_mat, el_ph_overlap
   USE klist,       ONLY : xk
   USE qpoint,      ONLY : xq, nksq, ikks
   USE modes,       ONLY : u,nmodes
@@ -151,6 +151,8 @@ SUBROUTINE elph_yambo_eval_and_IO( )
     ENDDO !ibnd
     !
     IF ( ionode ) write(99) gkkp_disk(:,:,:)
+    write(*,*) "DS: overlaps to disk"
+    IF ( ionode ) write(99) el_ph_overlap(:,:,ik)
     IF ( ionode ) write(99) y_pol_vec(:,:,:)
     IF ( ionode .and. lgamma ) write(99) y_grad_at_gamma(:,:,:,:)
     IF ( ionode ) write (99) et(:nbnd,ikk)

@@ -333,7 +333,7 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
   USE uspp,       ONLY : okvan, vkb, deeq_nc
   USE el_phon,    ONLY : el_ph_mat, el_ph_mat_rec, el_ph_mat_rec_col, &
                          comp_elph, done_elph, elph_nbnd_min, elph_nbnd_max, &
-                         el_ph_mat_nc_mag
+                         el_ph_mat_nc_mag, el_ph_overlap
   USE modes,      ONLY : u, nmodes
   USE units_ph,   ONLY : iubar, lrbar, iundnsscf, iudvpsi, lrdvpsi
   USE units_lr,   ONLY : iuwfc, lrwfc
@@ -369,7 +369,7 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
   INTEGER :: npw, npwq, nrec, ik, ikk, ikq, ipert, mode, ibnd, jbnd, ir, ig, &
              ipol, ios, ierr, nrec_ahc
   INTEGER :: isolv, nsolv, ikmk, ikmq
-  COMPLEX(DP) , ALLOCATABLE :: elphmat (:,:,:), aux2(:,:)
+  COMPLEX(DP) , ALLOCATABLE :: elphmat (:,:,:), aux2(:,:), overlap(:,:)
   LOGICAL :: exst
   COMPLEX(DP), EXTERNAL :: zdotc
   integer :: ibnd_fst, ibnd_lst
@@ -390,6 +390,7 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
   IF (.NOT. comp_elph(irr) .OR. done_elph(irr)) RETURN
 
   ALLOCATE (elphmat ( nbnd , nbnd , npe))
+  ALLOCATE (overlap ( nbnd , nbnd ))
   ALLOCATE (el_ph_mat_rec (nbnd,nbnd,nksq,npe) )
   ALLOCATE (aux2(npwx*npol, nbnd))
   el_ph_mat_rec=(0.0_DP,0.0_DP)
@@ -567,6 +568,17 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
               ENDDO
            ENDDO
         ENDDO ! ipert
+	!
+	write(*,*) "DS: compute overlaps"
+        DO ibnd = ibnd_fst, ibnd_lst
+           DO jbnd = ibnd_fst, ibnd_lst
+              overlap (jbnd, ibnd) = zdotc (npwq, evq (1, jbnd), 1, &
+                      evc (1, ibnd), 1)
+              IF (noncolin) &
+                 overlap (jbnd, ibnd) = overlap (jbnd, ibnd)+ &
+                   zdotc (npwq, evq(npwx+1,jbnd),1,evc(npwx+1,ibnd), 1)
+           ENDDO
+        ENDDO
         !
         ! If elph_ahc, the matrix elements are computed in ahc.f90
         IF (elph_ahc) EXIT
@@ -582,6 +594,12 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
                  el_ph_mat (ibnd, jbnd, ik, ipert + imode0) = elphmat (ibnd, jbnd, ipert)
                  el_ph_mat_rec (ibnd, jbnd, ik, ipert ) = elphmat (ibnd, jbnd, ipert)
               ENDDO
+           ENDDO
+        ENDDO
+	write(*,*) "DS: store overlaps"
+        DO jbnd = ibnd_fst, ibnd_lst
+           DO ibnd = ibnd_fst, ibnd_lst
+              el_ph_overlap (ibnd, jbnd, ik ) = overlap (ibnd, jbnd)
            ENDDO
         ENDDO
         ELSEIF (isolv==2) THEN
@@ -1195,7 +1213,7 @@ SUBROUTINE elphsum_simple
   USE symm_base, ONLY : s, irt, nsym, invs
   USE klist, ONLY : xk, nelec, nks, wk
   USE wvfct, ONLY : nbnd, et
-  USE el_phon, ONLY : el_ph_mat, el_ph_nsigma, el_ph_ngauss, el_ph_sigma
+  USE el_phon, ONLY : el_ph_mat, el_ph_nsigma, el_ph_ngauss, el_ph_sigma, el_ph_overlap
   USE mp_pools,  ONLY : inter_pool_comm, npool
   USE mp_images, ONLY : intra_image_comm
   USE output, ONLY : fildyn

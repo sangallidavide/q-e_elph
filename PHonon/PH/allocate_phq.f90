@@ -34,7 +34,7 @@ subroutine allocate_phq
   USE units_ph,      ONLY : this_pcxpsi_is_on_file, this_dvkb3_is_on_file
   USE dynmat,        ONLY : dyn00, dyn, dyn_rec, w2
   USE modes,         ONLY : u, npert, name_rap_mode, num_rap_mode
-  USE el_phon,       ONLY : el_ph_mat, el_ph_mat_nc_mag, elph
+  USE el_phon,       ONLY : el_ph_mat, el_ph_mat_nc_mag, elph, el_ph_overlap
   USE freq_ph,       ONLY : polar, nfs
   USE lrus,          ONLY : becp1, dpqq, dpqq_so
   USE qpoint,        ONLY : nksq, eigqts, xk_col
@@ -160,6 +160,7 @@ subroutine allocate_phq
 
   if (elph) then
     allocate (el_ph_mat( nbnd, nbnd, nksq, 3*nat))
+    allocate (el_ph_overlap( nbnd, nbnd, nksq))
     if(noncolin .AND. domag) then
        allocate (el_ph_mat_nc_mag( nbnd, nbnd, nksq, 3*nat))
     endif

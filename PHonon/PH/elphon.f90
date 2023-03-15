@@ -569,7 +569,6 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
            ENDDO
         ENDDO ! ipert
 	!
-	write(*,*) "DS: compute overlaps"
         DO ibnd = ibnd_fst, ibnd_lst
            DO jbnd = ibnd_fst, ibnd_lst
               overlap (jbnd, ibnd) = zdotc (npwq, evq (1, jbnd), 1, &
@@ -584,6 +583,7 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
         IF (elph_ahc) EXIT
         !
         CALL mp_sum (elphmat, intra_bgrp_comm)
+        CALL mp_sum (overlap, intra_bgrp_comm)
         !
         !  save all e-ph matrix elements into el_ph_mat
         !
@@ -596,7 +596,6 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
               ENDDO
            ENDDO
         ENDDO
-	write(*,*) "DS: store overlaps"
         DO jbnd = ibnd_fst, ibnd_lst
            DO ibnd = ibnd_fst, ibnd_lst
               el_ph_overlap (ibnd, jbnd, ik ) = overlap (ibnd, jbnd)

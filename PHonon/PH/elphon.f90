@@ -569,6 +569,8 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
            ENDDO
         ENDDO ! ipert
 	!
+        ! overlap(j,i)=<psi_{k+q,j}|psi_{k,i}>
+	!
         DO ibnd = ibnd_fst, ibnd_lst
            DO jbnd = ibnd_fst, ibnd_lst
               overlap (jbnd, ibnd) = zdotc (npwq, evq (1, jbnd), 1, &

@@ -203,7 +203,7 @@ SUBROUTINE prepare_q(auxdyn, do_band, do_iq, setup_pw, iq)
   !
   setup_pw = (.NOT.lgamma .OR. modenum /= 0 .OR. newgrid) 
   ! YAMBO >
-  if (qplot.and.elph_yambo) setup_pw=.true.
+  !if (qplot.and.elph_yambo) setup_pw=.true.
   ! YAMBO <
   !
   ! with qplot we redo the bands at gamma if it is not the first point
@@ -218,6 +218,8 @@ SUBROUTINE prepare_q(auxdyn, do_band, do_iq, setup_pw, iq)
   ! don't change it until the dfpt_tetra_mod has been properly updated. 
   !
   IF (noncolin.AND.domag) setup_pw=.true.
+  !
+  !write(*,*) "DEcide if WFs needs to be recomputed ",iq,qplot,always_run,setup_pw
   !
   do_band=.FALSE.
   DO irr=start_irr, MIN(ABS(last_irr),irr_iq(iq))

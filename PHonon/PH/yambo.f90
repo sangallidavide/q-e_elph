@@ -151,7 +151,6 @@ SUBROUTINE elph_yambo_eval_and_IO( )
     ENDDO !ibnd
     !
     IF ( ionode ) write(99) gkkp_disk(:,:,:)
-    write(*,*) "DS: overlaps to disk"
     IF ( ionode ) write(99) el_ph_overlap(:,:,ik)
     IF ( ionode ) write(99) y_pol_vec(:,:,:)
     IF ( ionode .and. lgamma ) write(99) y_grad_at_gamma(:,:,:,:)

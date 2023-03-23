@@ -368,13 +368,18 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
   ! LOCAL variables
   INTEGER :: npw, npwq, nrec, ik, ikk, ikq, ipert, mode, ibnd, jbnd, ir, ig, &
              ipol, ios, ierr, nrec_ahc
+  INTEGER :: ig1,ng,icx,ick,ickq
+  INTEGER, ALLOCATABLE :: g_to_comp(:,:)
   INTEGER :: isolv, nsolv, ikmk, ikmq
   COMPLEX(DP) , ALLOCATABLE :: elphmat (:,:,:), aux2(:,:), overlap(:,:)
-  LOGICAL :: exst
+  LOGICAL :: exst,opt1,opt2
   COMPLEX(DP), EXTERNAL :: zdotc
   integer :: ibnd_fst, ibnd_lst
   !
   CALL start_clock('elphel')
+  !
+  opt1=.false.
+  opt2=.true.
   !
   IF (elph_ahc) THEN
      ibnd_fst = ib_ahc_gauge_min
@@ -388,9 +393,11 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
   end if
   !
   IF (.NOT. comp_elph(irr) .OR. done_elph(irr)) RETURN
-
+ 
+  !write(*,*) "ng_tot ",maxval(igk_k)
   ALLOCATE (elphmat ( nbnd , nbnd , npe))
   ALLOCATE (overlap ( nbnd , nbnd ))
+  ALLOCATE (g_to_comp ( maxval(igk_k) , 2 ))
   ALLOCATE (el_ph_mat_rec (nbnd,nbnd,nksq,npe) )
   ALLOCATE (aux2(npwx*npol, nbnd))
   el_ph_mat_rec=(0.0_DP,0.0_DP)
@@ -434,6 +441,8 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
   !
   !  Start the loops over the k-points
   !
+  !write(*,*)
+  !
   DO ik = 1, nksq
      !
      !  ik = counter of k-points with vector k
@@ -446,6 +455,24 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
      IF (lsda) current_spin = isk (ikk)
      npw = ngk(ikk)
      npwq= ngk(ikq)
+     !
+     if (opt2) then
+       !write(*,*) 'define talbes k',shape(igk_k),npw,ikk,shape(g_to_comp)
+       g_to_comp=-1
+       DO icx = 1, npw
+         ig1 = igk_k(icx,ikk)
+         !write(*,*) icx,ig
+         IF (ig1 > 0) g_to_comp(ig1,1) = icx
+       END DO
+       !
+       !write(*,*) 'define talbes k+q',shape(igk_k),npwq,ikq
+       DO icx = 1, npwq
+         ig1 = igk_k(icx,ikq)
+         !write(*,*) icx,ig
+         IF (ig1 > 0) g_to_comp(ig1,2) = icx
+       END DO
+       ng=maxval(g_to_comp)
+     endif
      !
      CALL init_us_2 (npwq, igk_k(1,ikq), xk (1, ikq), vkb)
      !
@@ -468,6 +495,8 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
            ELSE
               CALL get_buffer (evc, lrwfc, iuwfc, ikmk)
               CALL get_buffer (evq, lrwfc, iuwfc, ikmq)
+	      !write(*,*) ikmk,ibnd_fst,npw ,size(evc(:,1)),npwx,"evc= ",abs(evc(npw :npwx,ibnd_fst))
+	      !write(*,*) ikmq,ibnd_fst,npwq,size(evq(:,1)),npwx,"evq= ",abs(evq(npwq:npwx,ibnd_fst))
            ENDIF
         ENDIF
         !
@@ -571,14 +600,35 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
 	!
         ! overlap(j,i)=<psi_{k+q,j}|psi_{k,i}>
 	!
-        DO ibnd = ibnd_fst, ibnd_lst
-           DO jbnd = ibnd_fst, ibnd_lst
-              overlap (jbnd, ibnd) = zdotc (npwq, evq (1, jbnd), 1, &
-                      evc (1, ibnd), 1)
-              IF (noncolin) &
-                 overlap (jbnd, ibnd) = overlap (jbnd, ibnd)+ &
-                   zdotc (npwq, evq(npwx+1,jbnd),1,evc(npwx+1,ibnd), 1)
+	!
+	!write(*,*) 'compute overlap', ikk, ikq
+        overlap = (0.0_DP, 0.0_DP)
+        DO jbnd = ibnd_fst, ibnd_lst
+           DO ibnd = ibnd_fst, ibnd_lst
+	     if(opt1) then
+               overlap (jbnd, ibnd) = zdotc (npwx, evq (1, jbnd), 1, &
+                       evc (1, ibnd), 1)
+               IF (noncolin) &
+                  overlap (jbnd, ibnd) = overlap (jbnd, ibnd)+ &
+                    zdotc (npwq, evq(npwx+1,jbnd),1,evc(npwx+1,ibnd), 1)
+	     else if (opt2) then
+	       do ig1=1,ng
+                 ick =g_to_comp(ig1,1)
+		 ickq=g_to_comp(ig1,2)
+		 if (ick ==-1) cycle
+		 if (ickq==-1) cycle
+		 !write(*,*) ick,ickq
+                 overlap (jbnd, ibnd) = overlap (jbnd, ibnd) + conjg(evq (ickq, jbnd))*evc (ick, ibnd)
+		 !write(*,*) 'ovlp= ',overlap (jbnd, ibnd)
+                 IF (noncolin) then
+	           ick =ick +npwx
+	           ickq=ickq+npwx
+	           overlap (jbnd, ibnd) = overlap (jbnd, ibnd)+ conjg(evq (ickq, jbnd))*evc (ick, ibnd)
+                 endif
+               enddo
+	     endif
            ENDDO
+	   !write(*,*) ikk,jbnd,"overlap= ",abs(overlap(jbnd,:))
         ENDDO
         !
         ! If elph_ahc, the matrix elements are computed in ahc.f90
@@ -598,6 +648,7 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
               ENDDO
            ENDDO
         ENDDO
+	!write(*,*) "Store ovlp at ", ik , ikk
         DO jbnd = ibnd_fst, ibnd_lst
            DO ibnd = ibnd_fst, ibnd_lst
               el_ph_overlap (ibnd, jbnd, ik ) = overlap (ibnd, jbnd)
@@ -610,6 +661,7 @@ SUBROUTINE elphel (irr, npe, imode0, dvscfins)
         ENDIF
         !
      ENDDO ! isolv
+     !write(*,*) "End of loop ", ik , ikk
   ENDDO ! ik
   !
   done_elph(irr)=.TRUE.
